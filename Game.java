@@ -3,9 +3,18 @@ import java.util.Scanner;
 
 public class Game {
     public static int numOfPlayers = 0;
-    public static int numOfMafias = 0;
+    public static int numOfMafia = 0;
     public static int numOfVillagers = 0;
     public static Player[] allplayers = new Player[100];
+    public static int DayNum = 0;
+    public static int NightNum = 0;
+
+    public static int index(Player[] players, int size, String name) {
+        for (int i = 0; i < size; ++i)
+            if (players[i].name.equals(name))
+                return i;
+        return -1;
+    }
 
     public static void assign_role(String[] playersnames, String name, String role) {
         for (int i = 1; i < playersnames.length; ++i)
@@ -17,17 +26,17 @@ public class Game {
                         break;
                     case "mafia":
                         allplayers[numOfPlayers] = new mafia(name);
-                        ++numOfMafias;
+                        ++numOfMafia;
                         ++numOfPlayers;
                         break;
                     case "godfather":
                         allplayers[numOfPlayers] = new godfather(name);
-                        ++numOfMafias;
+                        ++numOfMafia;
                         ++numOfPlayers;
                         break;
                     case "silencer":
                         allplayers[numOfPlayers] = new silencer(name);
-                        ++numOfMafias;
+                        ++numOfMafia;
                         ++numOfPlayers;
                         break;
                     case "villager":
@@ -64,8 +73,75 @@ public class Game {
         System.out.println("\nReadi? Set! Go.");
     }
 
+    public static void win() {
+        if (numOfMafia == 0) {
+            System.out.println("Villagers won!");
+            System.exit(0);
+        }
+        if (numOfVillagers <= numOfMafia) {
+            System.out.println("Mafia won!");
+            System.exit(0);
+        }
+    }
+
+    public static void Day() {
+        ++DayNum;
+        System.out.println("Day " + DayNum);
+        Scanner scanner = new Scanner(System.in);
+        while (!scanner.hasNext("end_vote")) {
+            String voter_name = scanner.next();
+            String votee_name = scanner.next();
+            if (index(allplayers, numOfPlayers, voter_name) == -1 || index(allplayers, numOfPlayers, votee_name) == -1) {
+                System.out.println("user not found");
+                continue;
+            }
+            Player voter = allplayers[index(allplayers, numOfPlayers, voter_name)];
+            Player votee = allplayers[index(allplayers, numOfPlayers, votee_name)];
+            if (voter instanceof villager && ((villager) voter).silenced)
+                System.out.println("voter is silenced");
+            else if (votee.isAlive == false)
+                System.out.println("votee already dead");
+            else
+                ++votee.NumOfDayVotes;
+        }
+        System.out.println("please enter \"end_vote\" again to see the result!");
+        return;
+    }
+
+    public static void DayResult() {
+        //bubble sort of number of votes:
+        for (int i = 0; i < numOfPlayers - 1; i++)
+            for (int j = 0; j < numOfPlayers - i - 1; j++)
+                if (allplayers[j].NumOfDayVotes > allplayers[j + 1].NumOfDayVotes) {
+                    Player temp = allplayers[j];
+                    allplayers[j] = allplayers[j + 1];
+                    allplayers[j + 1] = temp;
+                }
+        if (allplayers[numOfPlayers - 1].NumOfDayVotes == allplayers[numOfPlayers - 2].NumOfDayVotes)
+            System.out.println("nobody died");
+        else if (allplayers[numOfPlayers - 1] instanceof Joker) {
+            System.out.println("Joker won!");
+            System.exit(0);
+        } else {
+            allplayers[numOfPlayers - 1].isAlive = false;
+            System.out.println(allplayers[numOfPlayers - 1].name + " died");
+            if (allplayers[numOfPlayers - 1] instanceof mafia)
+                --numOfMafia;
+            else
+                --numOfVillagers;
+        }
+        for (int i = 0; i < numOfPlayers; ++i)
+            allplayers[i].NumOfDayVotes = 0;
+
+    }
+
+    public static void Night() {
+        ++NightNum;
+        System.out.println("Night " + NightNum);
+    }
+
     public static void get_game_state() {
-        System.out.println("Mafia = " + numOfMafias);
+        System.out.println("Mafia = " + numOfMafia);
         System.out.println("Villager = " + numOfVillagers);
     }
 
@@ -101,15 +177,20 @@ public class Game {
                     else {
                         start_game = true;
                         start_game();
+                        Day();
                     }
                     break;
                 case "end_vote":
+                    DayResult();
+                    win();
+                    Night();
                     break;
                 case "end_night":
                     break;
                 case "get_game_state":
                     get_game_state();
                     break;
+                default:
             }
 
         }
@@ -150,6 +231,7 @@ class silencer extends mafia {
 
 class villager extends Player {
     public int NumOfNightVotes;
+    public boolean silenced = false;
 
     public villager(String name) {
         super(name);
