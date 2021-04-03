@@ -6,8 +6,8 @@ public class Game {
     public static int numOfMafia = 0;
     public static int numOfVillagers = 0;
     public static Player[] allplayers = new Player[100];
-    public static int DayNum = 0;
-    public static int NightNum = 0;
+    public static int DayNum = 1;
+    public static int NightNum = 1;
 
     public static int index(Player[] players, int size, String name) {
         for (int i = 0; i < size; ++i)
@@ -70,7 +70,7 @@ public class Game {
     public static void start_game() {
         for (int i = 0; i < numOfPlayers; ++i)
             System.out.println(allplayers[i].name + ": " + allplayers[i].role);
-        System.out.println("\nReadi? Set! Go.");
+        System.out.println("\nReady? Set! Go.");
     }
 
     public static void win() {
@@ -85,10 +85,8 @@ public class Game {
     }
 
     public static void Day() {
-        ++DayNum;
-        System.out.println("Day " + DayNum);
         Scanner scanner = new Scanner(System.in);
-        while (!scanner.hasNext("end_vote")) {
+        while (!(scanner.hasNext("end_vote") || scanner.hasNext("get_game_state") || scanner.hasNext("start_game"))) {
             String voter_name = scanner.next();
             String votee_name = scanner.next();
             if (index(allplayers, numOfPlayers, voter_name) == -1 || index(allplayers, numOfPlayers, votee_name) == -1) {
@@ -97,15 +95,16 @@ public class Game {
             }
             Player voter = allplayers[index(allplayers, numOfPlayers, voter_name)];
             Player votee = allplayers[index(allplayers, numOfPlayers, votee_name)];
-            if (voter instanceof villager && ((villager) voter).silenced)
+            if (voter.silenced)
                 System.out.println("voter is silenced");
             else if (votee.isAlive == false)
                 System.out.println("votee already dead");
+            else if (voter.isAlive == false)
+                System.out.println("voter is dead");
             else
                 ++votee.NumOfDayVotes;
         }
-        System.out.println("please enter \"end_vote\" again to see the result!");
-        return;
+        System.out.println("please enter your request again to see the result!");
     }
 
     public static void DayResult() {
@@ -130,14 +129,112 @@ public class Game {
             else
                 --numOfVillagers;
         }
-        for (int i = 0; i < numOfPlayers; ++i)
+        for (int i = 0; i < numOfPlayers; ++i) {
             allplayers[i].NumOfDayVotes = 0;
+            if (allplayers[i] instanceof villager && allplayers[i].silenced)
+                allplayers[i].silenced = false;
+        }
 
     }
 
     public static void Night() {
-        ++NightNum;
         System.out.println("Night " + NightNum);
+        ++NightNum;
+        for (int i = 0; i < numOfPlayers; ++i)
+            if (allplayers[i].isAlive && (allplayers[i] instanceof mafia || allplayers[i] instanceof detective || allplayers[i] instanceof doctor))
+                System.out.println(allplayers[i].name + ": " + allplayers[i].role);
+
+        Scanner scanner = new Scanner(System.in);
+        while (!(scanner.hasNext("end_night") || scanner.hasNext("get_game_state") || scanner.hasNext("start_game"))) {
+            String first_name = scanner.next();
+            String second_name = scanner.next();
+            Player first_player = allplayers[index(allplayers, numOfPlayers, first_name)];
+            if (!first_player.isAlive) {
+                System.out.println("user is dead");
+            } else if (!(first_player instanceof mafia || first_player instanceof detective || first_player instanceof doctor))
+                System.out.println("user can not wake up during night");
+            else if (first_player instanceof detective) {
+                if (index(allplayers, numOfPlayers, second_name) == -1)
+                    System.out.println("user not found");
+                else if (((detective) first_player).has_asked)
+                    System.out.println("detective has already asked");
+                else {
+                    Player second_player = allplayers[index(allplayers, numOfPlayers, second_name)];
+                    ((detective) first_player).ask(second_player);
+                }
+            } else if (first_player instanceof doctor) {
+                Player second_player = allplayers[index(allplayers, numOfPlayers, second_name)];
+                ((doctor) first_player).save(second_player);
+            } else {
+                if (index(allplayers, numOfPlayers, second_name) == -1)
+                    System.out.println("user not joined");
+                else {
+                    Player second_player = allplayers[index(allplayers, numOfPlayers, second_name)];
+                    if (!second_player.isAlive)
+                        System.out.println("votee already dead");
+                    else if (first_player instanceof silencer) {
+                        if (!((silencer) first_player).has_silenced_someone)
+                            ((silencer) first_player).silence(second_player);
+                        else
+                            ((mafia) first_player).votee = second_player;
+                    } else
+                        ((mafia) first_player).votee = second_player;
+                }
+            }
+
+        }
+        System.out.println("please enter your request again to see the result!");
+    }
+
+    public static void NightResult() {
+        for (int i = 0; i < numOfPlayers; ++i)
+            for (int j = 0; j < numOfPlayers; ++j)
+                if (allplayers[j] instanceof mafia && ((mafia) allplayers[j]).votee == allplayers[i])
+                    ++allplayers[i].NumOfNightVotes;
+        //bubble sort of number of votes:
+        for (int i = 0; i < numOfPlayers - 1; i++)
+            for (int j = 0; j < numOfPlayers - i - 1; j++)
+                if (allplayers[j].NumOfNightVotes > allplayers[j + 1].NumOfNightVotes) {
+                    Player temp = allplayers[j];
+                    allplayers[j] = allplayers[j + 1];
+                    allplayers[j + 1] = temp;
+                }
+        if (allplayers[numOfPlayers - 1].NumOfNightVotes == allplayers[numOfPlayers - 2].NumOfNightVotes && allplayers[numOfPlayers - 2].NumOfNightVotes == allplayers[numOfPlayers - 3].NumOfNightVotes)
+            System.out.println("mafia tried to kill someone but no one was killed.");
+        else if (allplayers[numOfPlayers - 1].NumOfNightVotes == allplayers[numOfPlayers - 2].NumOfNightVotes) {
+            if (allplayers[numOfPlayers - 1].isSavedByDoctor) {
+                System.out.println("mafia tried to kill " + allplayers[numOfPlayers - 2].name + "\n" + allplayers[numOfPlayers - 2].name + " was killed");
+                allplayers[numOfPlayers - 2].isAlive = false;
+                if (allplayers[numOfPlayers - 2] instanceof villager)
+                    --numOfVillagers;
+            } else if (allplayers[numOfPlayers - 2].isSavedByDoctor) {
+                System.out.println("mafia tried to kill " + allplayers[numOfPlayers - 1].name + "\n" + allplayers[numOfPlayers - 1].name + " was killed");
+                allplayers[numOfPlayers - 1].isAlive = false;
+                if (allplayers[numOfPlayers - 1] instanceof villager)
+                    --numOfVillagers;
+            }
+        } else {
+            if (allplayers[numOfPlayers - 1] instanceof bulletproof && ((bulletproof) allplayers[numOfPlayers - 1]).additional_life) {
+                System.out.println("mafia tried to kill someone but no one was killed.");
+                ((bulletproof) allplayers[numOfPlayers - 1]).additional_life = false;
+            } else if (allplayers[numOfPlayers - 1].isSavedByDoctor)
+                System.out.println("mafia tried to kill " + allplayers[numOfPlayers - 1].name + " but doctor saved him/her");
+            else {
+                System.out.println("mafia tried to kill " + allplayers[numOfPlayers - 1].name + "\n" + allplayers[numOfPlayers - 1].name + " was killed");
+                allplayers[numOfPlayers - 1].isAlive = false;
+                if (allplayers[numOfPlayers - 1] instanceof villager)
+                    --numOfVillagers;
+            }
+        }
+        for (int i = 0; i < numOfPlayers; i++) {
+            if (allplayers[i].silenced)
+                System.out.println("Silenced " + allplayers[i].name);
+            allplayers[i].isSavedByDoctor = false;
+            if (allplayers[i] instanceof detective)
+                ((detective) allplayers[i]).has_asked = false;
+            allplayers[i].NumOfNightVotes = 0;
+        }
+
     }
 
     public static void get_game_state() {
@@ -147,19 +244,19 @@ public class Game {
 
     public static void main(String[] args) {
         String[] playersNames = null;
-        boolean creat_game = false;
+        boolean create_game = false;
         boolean start_game = false;
         Scanner scanner = new Scanner(System.in);
         while (scanner.hasNext()) {
             String s = scanner.next();
             switch (s) {
-                case "creat_game":
-                    creat_game = true;
+                case "create_game":
+                    create_game = true;
                     String names = scanner.nextLine();
                     playersNames = names.split(" ");
                     break;
                 case "assign_role":
-                    if (creat_game == false)
+                    if (create_game == false)
                         System.out.println("no game created");
                     else {
                         String name = scanner.next();
@@ -168,7 +265,7 @@ public class Game {
                     }
                     break;
                 case "start_game":
-                    if (creat_game == false)
+                    if (create_game == false)
                         System.out.println("no game created");
                     else if (start_game)
                         System.out.println("game has already started");
@@ -177,6 +274,7 @@ public class Game {
                     else {
                         start_game = true;
                         start_game();
+                        System.out.println("Day " + DayNum);
                         Day();
                     }
                     break;
@@ -186,11 +284,15 @@ public class Game {
                     Night();
                     break;
                 case "end_night":
+                    ++DayNum;
+                    System.out.println("Day " + DayNum);
+                    NightResult();
+                    win();
+                    Day();
                     break;
                 case "get_game_state":
                     get_game_state();
                     break;
-                default:
             }
 
         }
@@ -200,7 +302,10 @@ public class Game {
 class Player {
     public String name;
     public int NumOfDayVotes;
+    public int NumOfNightVotes;
     public boolean isAlive = true;
+    public boolean isSavedByDoctor = false;
+    public boolean silenced = false;
     public String role;
 
     public Player(String name) {
@@ -213,6 +318,9 @@ class mafia extends Player {
         super(name);
         role = "mafia";
     }
+
+    public Player votee;
+
 }
 
 class godfather extends mafia {
@@ -227,11 +335,16 @@ class silencer extends mafia {
         super(name);
         role = "silencer";
     }
+
+    public boolean has_silenced_someone = false;
+
+    public void silence(Player p) {
+        p.silenced = true;
+        has_silenced_someone = true;
+    }
 }
 
 class villager extends Player {
-    public int NumOfNightVotes;
-    public boolean silenced = false;
 
     public villager(String name) {
         super(name);
@@ -244,12 +357,30 @@ class doctor extends villager {
         super(name);
         role = "doctor";
     }
+
+    public void save(Player p) {
+        p.isSavedByDoctor = true;
+    }
 }
 
 class detective extends villager {
     public detective(String name) {
         super(name);
         role = "detective";
+    }
+
+    public boolean has_asked = false;
+
+    public void ask(Player suspect) {
+        if (!suspect.isAlive)
+            System.out.println("suspect is dead");
+        else {
+            if (suspect instanceof mafia && !(suspect instanceof godfather))
+                System.out.println("Yes");
+            else
+                System.out.println("No");
+        }
+        has_asked = true;
     }
 }
 
@@ -258,11 +389,11 @@ class bulletproof extends villager {
         super(name);
         role = "bulletproof";
     }
+
+    public boolean additional_life = true;
 }
 
 class Joker extends Player {
-    public int NumOfNightVotes;
-
     public Joker(String name) {
         super(name);
         role = "Joker";
