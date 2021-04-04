@@ -1,4 +1,3 @@
-
 import java.util.Scanner;
 
 public class Game {
@@ -142,19 +141,12 @@ public class Game {
         }
         for (int i = 0; i < numOfPlayers; ++i) {
             allplayers[i].NumOfDayVotes = 0;
-            if (allplayers[i] instanceof villager && allplayers[i].silenced)
-                allplayers[i].silenced = false;
+            allplayers[i].silenced = false;
         }
 
     }
 
     public static void Night() {
-        System.out.println("Night " + NightNum);
-        ++NightNum;
-        for (int i = 0; i < numOfPlayers; ++i)
-            if (allplayers[i].isAlive && (allplayers[i] instanceof mafia || allplayers[i] instanceof detective || allplayers[i] instanceof doctor))
-                System.out.println(allplayers[i].name + ": " + allplayers[i].role);
-
         Scanner scanner = new Scanner(System.in);
         while (!(scanner.hasNext("end_night") || scanner.hasNext("get_game_state") || scanner.hasNext("start_game"))) {
             String first_name = scanner.next();
@@ -253,6 +245,8 @@ public class Game {
                 System.out.println("Silenced " + allplayers[i].name);
             if (allplayers[i] instanceof detective)
                 ((detective) allplayers[i]).has_asked = false;
+            if (allplayers[i] instanceof silencer)
+                ((silencer) allplayers[i]).has_silenced_someone = false;
             if (allplayers[i] instanceof mafia)
                 ((mafia) allplayers[i]).votee = null;
             allplayers[i].NumOfNightVotes = 0;
@@ -305,6 +299,12 @@ public class Game {
                 case "end_vote":
                     DayResult();
                     win();
+                    System.out.println("Night " + NightNum);
+                    ++NightNum;
+                    for (int i = 0; i < numOfPlayers; ++i)
+                        if (allplayers[i].isAlive && (allplayers[i] instanceof mafia || allplayers[i] instanceof detective || allplayers[i] instanceof doctor))
+                            System.out.println(allplayers[i].name + ": " + allplayers[i].role);
+
                     Night();
                     break;
                 case "end_night":
