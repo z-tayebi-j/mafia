@@ -104,7 +104,18 @@ public class Game {
             else
                 ++votee.NumOfDayVotes;
         }
-        System.out.println("please enter your request again to see the result!");
+        if (scanner.hasNext("get_game_state")) {
+            get_game_state();
+            System.out.println("please enter votes:");
+            Day();
+        }
+        if (scanner.hasNext("start_game")) {
+            System.out.println("game has already started");
+            System.out.println("please enter votes:");
+            Day();
+        }
+        if (scanner.hasNext("end_vote"))
+            System.out.println("please enter end_vote again to see the result!");
     }
 
     public static void DayResult() {
@@ -183,7 +194,18 @@ public class Game {
             }
 
         }
-        System.out.println("please enter your request again to see the result!");
+        if (scanner.hasNext("get_game_state")) {
+            get_game_state();
+            System.out.println("please enter your request :");
+            Night();
+        }
+        if (scanner.hasNext("start_game")) {
+            System.out.println("game has already started");
+            System.out.println("please enter your request :");
+            Night();
+        }
+        if (scanner.hasNext("end_night"))
+            System.out.println("please enter end_night again to see the result!");
     }
 
     public static void NightResult() {
@@ -229,10 +251,12 @@ public class Game {
         for (int i = 0; i < numOfPlayers; i++) {
             if (allplayers[i].silenced)
                 System.out.println("Silenced " + allplayers[i].name);
-            allplayers[i].isSavedByDoctor = false;
             if (allplayers[i] instanceof detective)
                 ((detective) allplayers[i]).has_asked = false;
+            if (allplayers[i] instanceof mafia)
+                ((mafia) allplayers[i]).votee = null;
             allplayers[i].NumOfNightVotes = 0;
+            allplayers[i].isSavedByDoctor = false;
         }
 
     }
